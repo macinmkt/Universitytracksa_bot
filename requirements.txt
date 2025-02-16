@@ -1,5 +1,4 @@
 requests
 urllib3
-pip freeze > requirements.txt
 python-telegram-bot==13.7
 python-dotenv
