@@ -65,7 +65,7 @@ async def choose_challenge_level(update: Update, context: CallbackContext):
     challenge_text = "، ".join(challenge_words)
     end_time = (datetime.now() + timedelta(minutes=time_limit)).isoformat()
 
-    with sqlite3.connect("ramadan_bot.db") as conn:
+    with sqlite3.connect("Universitytracksa_bot.db") as conn:
         conn.execute("INSERT OR REPLACE INTO users (user_id, challenge_end_time) VALUES (?, ?)", (query.from_user.id, end_time))
 
     await query.message.edit_text(
@@ -83,13 +83,17 @@ async def complete_challenge(update: Update, context: CallbackContext):
     await query.answer()  # تأكيد استلام البيانات
     points = int(query.data.split("_")[2])
 
-    with sqlite3.connect("ramadan_bot.db") as conn:
+    with sqlite3.connect("Universitytracksa_bot.db") as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT challenge_end_time FROM users WHERE user_id=?", (query.from_user.id,))
-        end_time = cursor.fetchone()[0]
+        result = cursor.fetchone()
+        if result:
+            end_time = result[0]
+        else:
+            end_time = datetime.now().isoformat()
 
     if datetime.now() <= datetime.fromisoformat(end_time):
-        with sqlite3.connect("ramadan_bot.db") as conn:
+        with sqlite3.connect("Universitytracksa_bot.db") as conn:
             conn.execute("UPDATE users SET score = score + ? WHERE user_id=?", (points, query.from_user.id))
         await query.message.edit_text(f"🎉 *أحسنت!* لقد أكملت التحدي بنجاح وربحت {points} نقاط.")
     else:
@@ -103,7 +107,8 @@ async def show_score(update: Update, context: CallbackContext):
     with sqlite3.connect("Universitytracksa_bot.db") as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT score FROM users WHERE user_id=?", (query.from_user.id,))
-        score = cursor.fetchone()[0] or 0
+        result = cursor.fetchone()
+        score = result[0] if result else 0
 
     await query.message.edit_text(f"🏆 *نقاطك الحالية:* {score} نقطة.", parse_mode="Markdown")
 
@@ -130,7 +135,6 @@ async def prayer_times(update: Update, context: CallbackContext):
 
     # الحصول على مواقيت الصلاة باستخدام API
     try:
-        # استبدل "CITY" و"COUNTRY" بالمدينة والبلد المطلوبة
         url = "http://api.aladhan.com/v1/timingsByCity"
         params = {
             "city": "Cairo",  # يمكن تغييرها إلى المدينة المطلوبة
