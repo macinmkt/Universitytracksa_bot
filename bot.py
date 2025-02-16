@@ -1,5 +1,9 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, CallbackContext
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, CallbackContext, MessageHandler, filters
+import requests
+
+# 🔑 مفتاح DeepAI API
+DEEPAI_API_KEY = "df6d8e18-fd46-4749-8dae-82e489809243"
 
 # دالة البدء
 async def start(update: Update, context: CallbackContext) -> None:
@@ -12,25 +16,41 @@ async def start(update: Update, context: CallbackContext) -> None:
     reply_markup = InlineKeyboardMarkup(keyboard)
     await update.message.reply_text("مرحبًا بك في بوت Universitytracksa_bot! اختر أحد الخيارات التالية:", reply_markup=reply_markup)
 
-# دالة اختبار الميول المهني
+# دالة اختبار الميول المهني باستخدام DeepAI
 async def career_test(update: Update, context: CallbackContext) -> None:
-    questions = [
-        ("هل تفضل العمل مع الأرقام؟", ["نعم", "لا"]),
-        ("هل تحب العمل الجماعي؟", ["نعم", "لا"]),
-        ("هل تستمتع بحل المشكلات التقنية؟", ["نعم", "لا"])
-    ]
-    context.user_data['career_test'] = questions
-    await ask_question(update, context, 0)
+    await update.callback_query.message.reply_text("مرحبًا! سأقوم بمساعدتك في تحديد ميولك المهنية. أخبرني عن اهتماماتك وخبراتك.")
 
-# دالة طرح الأسئلة
-async def ask_question(update: Update, context: CallbackContext, index: int) -> None:
-    if index < len(context.user_data['career_test']):
-        question, answers = context.user_data['career_test'][index]
-        keyboard = [[InlineKeyboardButton(answer, callback_data=f'q_{index}_{answer}')] for answer in answers]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.callback_query.message.reply_text(question, reply_markup=reply_markup)
+    # بدء محادثة مع DeepAI
+    context.user_data['chat_history'] = []
+    await ask_deepai(update, context, "أخبرني عن اهتماماتك وخبراتك.")
+
+# دالة التفاعل مع DeepAI
+async def ask_deepai(update: Update, context: CallbackContext, user_input: str) -> None:
+    # إرسال الرسائل إلى DeepAI
+    response = requests.post(
+        "https://api.deepai.org/api/chatbot",
+        data={
+            "text": user_input
+        },
+        headers={
+            "api-key": DEEPAI_API_KEY
+        }
+    )
+
+    # الحصول على رد DeepAI
+    if response.status_code == 200:
+        deepai_reply = response.json()['output']
     else:
-        await update.callback_query.message.reply_text("تم الانتهاء من الاختبار! سيتم تحليل إجاباتك وإرسال النتيجة لاحقًا.")
+        deepai_reply = "عذرًا، حدث خطأ أثناء معالجة طلبك. يرجى المحاولة مرة أخرى."
+
+    # إرسال رد DeepAI إلى المستخدم
+    await update.callback_query.message.reply_text(deepai_reply)
+
+# دالة معالجة الرسائل النصية
+async def handle_message(update: Update, context: CallbackContext) -> None:
+    user_input = update.message.text
+    if 'chat_history' in context.user_data:
+        await ask_deepai(update, context, user_input)
 
 # دالة حساب المعدل التراكمي
 async def gpa_calc(update: Update, context: CallbackContext) -> None:
@@ -56,9 +76,6 @@ async def button(update: Update, context: CallbackContext) -> None:
     await query.answer()
     if query.data == 'career_test':
         await career_test(update, context)
-    elif query.data.startswith('q_'):
-        _, index, _ = query.data.split('_')
-        await ask_question(update, context, int(index) + 1)
     elif query.data == 'gpa_calc':
         await gpa_calc(update, context)
     elif query.data == 'majors':
@@ -77,6 +94,7 @@ def main():
     # إضافة المعالجات
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CallbackQueryHandler(button))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
     # بدء البوت
     application.run_polling()
