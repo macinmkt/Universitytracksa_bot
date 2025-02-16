@@ -11,7 +11,7 @@ TOKEN = os.getenv("TOKEN")
 
 # 🛠️ قاعدة البيانات لحفظ تقدم المستخدمين
 def init_db():
-    with sqlite3.connect("ramadan_bot.db") as conn:
+    with sqlite3.connect("Universitytracksa_bot.db") as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 user_id INTEGER PRIMARY KEY,
@@ -100,7 +100,7 @@ async def show_score(update: Update, context: CallbackContext):
     query = update.callback_query
     await query.answer()  # تأكيد استلام البيانات
 
-    with sqlite3.connect("ramadan_bot.db") as conn:
+    with sqlite3.connect("Universitytracksa_bot.db") as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT score FROM users WHERE user_id=?", (query.from_user.id,))
         score = cursor.fetchone()[0] or 0
@@ -112,7 +112,7 @@ async def leaderboard(update: Update, context: CallbackContext):
     query = update.callback_query
     await query.answer()  # تأكيد استلام البيانات
 
-    with sqlite3.connect("ramadan_bot.db") as conn:
+    with sqlite3.connect("Universitytracksa_bot.db") as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT user_id, score FROM users ORDER BY score DESC LIMIT 10")
         top_users = cursor.fetchall()
